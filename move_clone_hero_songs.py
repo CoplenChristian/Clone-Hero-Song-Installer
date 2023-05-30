@@ -1,63 +1,50 @@
 import os
-import shutil
-import zipfile
-import patoolib
-import rarfile
+import time
+import ctypes
 from datetime import datetime, timedelta
 
-# Set Download Directory
-downloads_dir = ""
+import patoolib
+import rarfile
+import py7zr
 
-# Set to diretory where clone hero songs are saved
-target_dir = ""
+DOWNLOAD_DIR = "C:/Users/cople/Downloads"
+TARGET_DIR = "G:/Games/clonehero-win64/clonehero-win64/songs"
 
-# Get the current date and the date from 24 hours ago
-current_date = datetime.now()
-past_date = current_date - timedelta(hours=24)
+def extract_files():
+    moved_files = []
+    one_day_ago = datetime.now() - timedelta(days=1)
 
-for file in os.listdir(downloads_dir):
-    file_path = os.path.join(downloads_dir, file)
+    for filename in os.listdir(DOWNLOAD_DIR):
+        file = os.path.join(DOWNLOAD_DIR, filename)
+        if os.path.isfile(file):
+            last_modified_time = datetime.fromtimestamp(os.path.getmtime(file))
+            if last_modified_time > one_day_ago:
+                if filename.endswith('.zip'):
+                    patoolib.extract_archive(file, outdir=TARGET_DIR)
+                    moved_files.append(filename)
+                elif filename.endswith('.rar'):
+                    with rarfile.RarFile(file) as rf:
+                        rf.extractall(TARGET_DIR)
+                        moved_files.append(filename)
+                elif filename.endswith('.7z'):
+                    with py7zr.SevenZipFile(file, mode='r') as z:
+                        z.extractall(TARGET_DIR)
+                        moved_files.append(filename)
+                
+                os.remove(file)  # delete the archive file after extraction
+                
+    return moved_files
 
-    # Check if the file is a zip or rar file and if it was created within the last 24 hours
-    if (file.endswith(".zip") or file.endswith(".rar")) and datetime.fromtimestamp(os.path.getctime(file_path)) > past_date:
+def main():
+    moved_files = extract_files()
+    
+    if moved_files:
+        dialog_text = f'The following files have been moved: \n{", ".join(moved_files)}'
+    else:
+        dialog_text = 'No files were moved.'
         
-        # Open the zip or rar file
-        if file.endswith(".zip"):
-            with zipfile.ZipFile(file_path, "r") as zip_ref:
-                # Get the name of the folder to create in the target directory
-                folder_name = os.path.splitext(file)[0].replace(" ", "-")
+    ctypes.windll.user32.MessageBoxW(0, dialog_text, "File Extraction Report", 1)
 
-                # Extract the contents of the zip file to the target directory
-                for obj in zip_ref.infolist():
-                    if obj.filename.endswith('/'):
-                        continue
-                    else:
-                        with zip_ref.open(obj) as file:
-                            filename = os.path.basename(obj.filename)
-                            target_file_path = os.path.join(target_dir, folder_name, filename.replace(" ", "-"))
-                            target_file_dir = os.path.dirname(target_file_path)
-                            if not os.path.exists(target_file_dir):
-                                os.makedirs(target_file_dir)
-                            with open(target_file_path, "wb") as target_file:
-                                shutil.copyfileobj(file, target_file)
 
-        elif file.endswith(".rar"):
-            with rarfile.RarFile(file_path, "r") as rar_ref:
-                # Get the name of the folder to create in the target directory
-                folder_name = os.path.splitext(file)[0].replace(" ", "-")
-
-                # Extract the contents of the rar file to the target directory
-                for obj in rar_ref.infolist():
-                    if obj.isdir():
-                        continue
-                    else:
-                        filename = obj.filename.replace("\\", "/")
-                        target_file_path = os.path.join(target_dir, folder_name, os.path.basename(filename).replace(" ", "-"))
-                        target_file_dir = os.path.dirname(target_file_path)
-                        if not os.path.exists(target_file_dir):
-                            os.makedirs(target_file_dir)
-                        with open(target_file_path, "wb") as target_file:
-                            target_file.write(rar_ref.read(filename))
-
-        # Delete the file from the downloads directory when done
-        os.remove(file_path)
+if __name__ == "__main__":
+    main()
