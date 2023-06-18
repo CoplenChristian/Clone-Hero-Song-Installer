@@ -1,10 +1,7 @@
 import os
 import time
-import ctypes
-from datetime import datetime, timedelta
 import json
-import tkinter as tk
-from tkinter import filedialog
+from datetime import datetime, timedelta
 
 import patoolib
 import rarfile
@@ -53,53 +50,30 @@ def load_config():
             DOWNLOAD_DIR = data["DOWNLOAD_DIR"]
             TARGET_DIR = data["TARGET_DIR"]
     except Exception as e:
+        print(f"Error loading config file: {e}")
         pass
 
-def select_directory(entry):
-    directory = filedialog.askdirectory()
-    entry.delete(0, tk.END)
-    entry.insert(0, directory)
-
 def main():
-    load_config()
-    root = tk.Tk()
-    root.title("File Extractor")
-
-    download_dir_entry = tk.Entry(root, width=50)
-    download_dir_entry.insert(0, DOWNLOAD_DIR)
-    download_dir_entry.grid(row=0, column=1, padx=20, pady=(10, 0))
-
-    target_dir_entry = tk.Entry(root, width=50)
-    target_dir_entry.insert(0, TARGET_DIR)
-    target_dir_entry.grid(row=1, column=1)
-
-    download_dir_button = tk.Button(root, text="Download Directory", command=lambda: select_directory(download_dir_entry))
-    download_dir_button.grid(row=0, column=0, padx=20, pady=(10, 0))
-
-    target_dir_button = tk.Button(root, text="Target Directory", command=lambda: select_directory(target_dir_entry))
-    target_dir_button.grid(row=1, column=0)
-
-    run_button = tk.Button(root, text="Run", command=lambda: run_task(download_dir_entry.get(), target_dir_entry.get()))
-    run_button.grid(row=2, column=0, columnspan=2, pady=10)
-
-    root.mainloop()
-
-def run_task(download_dir, target_dir):
     global DOWNLOAD_DIR
     global TARGET_DIR
-    DOWNLOAD_DIR = download_dir
-    TARGET_DIR = target_dir
-    save_config()
+    
+    load_config()
+    print(f"Current Download Directory: {DOWNLOAD_DIR}")
+    print(f"Current Target Directory: {TARGET_DIR}")
 
+    change_dir = input("Do you want to change the directories? (y/n): ")
+    if change_dir.lower() == 'y':
+        DOWNLOAD_DIR = input("Enter the new Download Directory: ")
+        TARGET_DIR = input("Enter the new Target Directory: ")
+        save_config()
+
+    print("Running the file extraction...")
     moved_files = extract_files()
     
     if moved_files:
-        dialog_text = f'The following files have been moved: \n{", ".join(moved_files)}'
+        print(f'The following files have been moved: \n{", ".join(moved_files)}')
     else:
-        dialog_text = 'No files were moved.'
-        
-    ctypes.windll.user32.MessageBoxW(0, dialog_text, "File Extraction Report", 1)
-
+        print('No files were moved.')
 
 if __name__ == "__main__":
     main()
